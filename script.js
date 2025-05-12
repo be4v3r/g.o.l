@@ -9,6 +9,7 @@ const resetClear = document.getElementById('resetClear');
 const resetRandom = document.getElementById('resetRandom');
 const gridWidthInput = document.getElementById('gridWidth');
 const gridHeightInput = document.getElementById('gridHeight');
+const autoResetCheckbox = document.getElementById('autoReset');
 
 let cols = 100; // Default grid width
 let rows = 50; // Default grid height
@@ -28,6 +29,10 @@ let dragStartX, dragStartY;
 
 let isDrawing = false; // Track if the user is drawing
 let drawState = 1; // State to draw (1 for alive, 0 for dead)
+
+let cycleCount = 0; // Track the number of cycles
+let lastResetState = 'clear'; // Track the last reset type ('clear' or 'random')
+let previousGridStates = new Set(); // Track previous grid states to detect repetition
 
 // Toggle menu visibility
 menuToggle.addEventListener('click', () => {
@@ -52,13 +57,17 @@ speedInput.addEventListener('input', () => {
 // Reset grid to clear
 resetClear.addEventListener('click', () => {
     grid = create2DArray(cols, rows); // Clear the grid
+    lastResetState = 'clear'; // Update the last reset state
     drawGrid();
+    resetCycleTracking(); // Reset cycle tracking
 });
 
 // Reset grid to random
 resetRandom.addEventListener('click', () => {
     randomizeGrid(); // Randomize the grid
+    lastResetState = 'random'; // Update the last reset state
     drawGrid();
+    resetCycleTracking(); // Reset cycle tracking
 });
 
 // Update grid size when the user changes the settings
@@ -159,6 +168,43 @@ function countNeighbors(grid, x, y) {
 
     sum -= grid[x][y]; // Exclude the cell itself
     return sum;
+}
+
+// Reset cycle tracking
+function resetCycleTracking() {
+    cycleCount = 0;
+    previousGridStates.clear();
+}
+
+// Serialize the grid state for comparison
+function serializeGrid(grid) {
+    return grid.map(row => row.join('')).join('|');
+}
+
+// Auto-reset logic
+function autoResetGrid() {
+    if (autoResetCheckbox.checked) {
+        const currentState = serializeGrid(grid);
+
+        // Check if the current state has been seen before
+        if (previousGridStates.has(currentState)) {
+            cycleCount++;
+        } else {
+            previousGridStates.add(currentState);
+            cycleCount = 0; // Reset cycle count if a new state is detected
+        }
+
+        // Reset the grid if cycles repeat for 50 iterations
+        if (cycleCount >= 50) {
+            if (lastResetState === 'clear') {
+                grid = create2DArray(cols, rows); // Reset to clear
+            } else if (lastResetState === 'random') {
+                randomizeGrid(); // Reset to random
+            }
+            drawGrid();
+            resetCycleTracking(); // Reset cycle tracking after auto-reset
+        }
+    }
 }
 
 // Handle spacebar to pause/unpause
@@ -276,6 +322,7 @@ function resizeCanvas() {
 function update() {
     if (!paused) {
         nextGeneration();
+        autoResetGrid(); // Check if auto-reset is needed
     }
     drawGrid();
     setTimeout(() => requestAnimationFrame(update), simulationSpeed);
