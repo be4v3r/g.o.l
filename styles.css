@@ -1,0 +1,80 @@
+/* Make the canvas fill the entire window */
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+}
+
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+#menu {
+    position: fixed; /* Ensure the menu stays in the same spot */
+    top: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column; /* Stack the button and menu content vertically */
+    align-items: flex-end; /* Align content to the right */
+}
+
+#menuToggle {
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 8px; /* Rounded corners */
+    width: 40px; /* Make it a square */
+    height: 40px; /* Make it a square */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#menuContent {
+    display: none; /* Hidden by default */
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-top: 5px; /* Add space between the button and the menu */
+    width: 150px; /* Set a fixed width for the menu */
+}
+
+#menuContent label {
+    font-size: 14px;
+    margin-bottom: 5px;
+    display: block;
+}
+
+#menuContent input[type="range"] {
+    width: 100%;
+    margin: 5px 0;
+}
+
+#menuContent input[type="number"] {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+#menuContent button {
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    width: 100%;
+}
+
+#menuContent button:hover {
+    background-color: #555;
+}
