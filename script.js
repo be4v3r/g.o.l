@@ -395,31 +395,60 @@ canvas.addEventListener('touchend', (event) => {
 
 // --- Pinch to zoom support ---
 let lastPinchDist = null;
+let lastPinchCenter = null;
+
 canvas.addEventListener('touchmove', (event) => {
     if (event.touches.length === 2) {
-        const dx = event.touches[0].clientX - event.touches[1].clientX;
-        const dy = event.touches[0].clientY - event.touches[1].clientY;
+        const rect = canvas.getBoundingClientRect();
+        const t1 = event.touches[0];
+        const t2 = event.touches[1];
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (lastPinchDist !== null) {
+
+        // Center between two fingers
+        const centerX = (t1.clientX + t2.clientX) / 2 - rect.left;
+        const centerY = (t1.clientY + t2.clientY) / 2 - rect.top;
+
+        if (lastPinchDist !== null && lastPinchCenter !== null) {
             let delta = dist - lastPinchDist;
-            let zoom = scale + delta * 0.005;
-            zoom = Math.max(0.1, Math.min(zoom, 10));
-            // Zoom to center between two fingers
-            const rect = canvas.getBoundingClientRect();
-            const centerX = ((event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left - offsetX) / scale;
-            const centerY = ((event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top - offsetY) / scale;
-            offsetX = ((event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left) - centerX * zoom;
-            offsetY = ((event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top) - centerY * zoom;
-            scale = zoom;
+            let newScale = scale + delta * 0.005;
+            newScale = Math.max(0.1, Math.min(newScale, 10));
+
+            // Grid position under the pinch center before scaling
+            const gridX = (lastPinchCenter.x - offsetX) / scale;
+            const gridY = (lastPinchCenter.y - offsetY) / scale;
+
+            // Update scale
+            scale = newScale;
+
+            // Adjust offset so the same grid position stays under the pinch center
+            offsetX = centerX - gridX * scale;
+            offsetY = centerY - gridY * scale;
+
             drawGrid();
         }
         lastPinchDist = dist;
+        lastPinchCenter = { x: centerX, y: centerY };
         event.preventDefault();
     } else {
         lastPinchDist = null;
+        lastPinchCenter = null;
     }
 }, {passive: false});
 
 canvas.addEventListener('touchend', () => {
     lastPinchDist = null;
+    lastPinchCenter = null;
 }, {passive: false});
+
+// Pause/unpause on mobile by tapping outside the canvas
+if ('ontouchstart' in window) {
+    document.addEventListener('touchstart', (event) => {
+        // If the touch is NOT on the canvas or menu, toggle pause
+        const target = event.target;
+        if (target !== canvas && !menuContent.contains(target) && target !== menuToggle) {
+            paused = !paused;
+        }
+    });
+}
