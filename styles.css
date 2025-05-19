@@ -78,3 +78,29 @@ canvas {
 #menuContent button:hover {
     background-color: #555;
 }
+
+@media (max-width: 600px) {
+    #menu {
+        top: 5px;
+        right: 5px;
+    }
+    #menuContent {
+        width: 95vw;
+        min-width: 0;
+        box-sizing: border-box;
+        padding: 8px;
+    }
+    #menuToggle {
+        width: 36px;
+        height: 36px;
+        font-size: 20px;
+        padding: 8px;
+    }
+    #menuContent input,
+    #menuContent button {
+        font-size: 16px;
+    }
+    #menuContent label {
+        font-size: 16px;
+    }
+}

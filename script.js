@@ -333,3 +333,93 @@ resizeCanvas();
 centerGrid();
 drawGrid(); // Draw the empty grid
 update();
+
+// --- Touch support for drawing ---
+let lastTouchDraw = null;
+
+canvas.addEventListener('touchstart', (event) => {
+    if (event.touches.length === 1) {
+        const touch = event.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = (touch.clientX - rect.left - offsetX) / scale;
+        const mouseY = (touch.clientY - rect.top - offsetY) / scale;
+        const x = Math.floor(mouseX / resolution);
+        const y = Math.floor(mouseY / resolution);
+        if (x >= 0 && x < cols && y >= 0 && y < rows) {
+            drawState = grid[x][y] === 1 ? 0 : 1;
+            grid[x][y] = drawState;
+            drawGrid();
+            lastTouchDraw = {x, y};
+        }
+        isDrawing = true;
+    } else if (event.touches.length === 2) {
+        // Start panning
+        isDragging = true;
+        dragStartX = event.touches[0].clientX - offsetX;
+        dragStartY = event.touches[0].clientY - offsetY;
+    }
+    event.preventDefault();
+}, {passive: false});
+
+canvas.addEventListener('touchmove', (event) => {
+    if (event.touches.length === 1 && isDrawing) {
+        const touch = event.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = (touch.clientX - rect.left - offsetX) / scale;
+        const mouseY = (touch.clientY - rect.top - offsetY) / scale;
+        const x = Math.floor(mouseX / resolution);
+        const y = Math.floor(mouseY / resolution);
+        if (x >= 0 && x < cols && y >= 0 && y < rows) {
+            // Avoid redundant drawing on the same cell
+            if (!lastTouchDraw || lastTouchDraw.x !== x || lastTouchDraw.y !== y) {
+                grid[x][y] = drawState;
+                drawGrid();
+                lastTouchDraw = {x, y};
+            }
+        }
+    } else if (event.touches.length === 2 && isDragging) {
+        // Panning with two fingers
+        offsetX = event.touches[0].clientX - dragStartX;
+        offsetY = event.touches[0].clientY - dragStartY;
+        drawGrid();
+    }
+    event.preventDefault();
+}, {passive: false});
+
+canvas.addEventListener('touchend', (event) => {
+    isDrawing = false;
+    isDragging = false;
+    lastTouchDraw = null;
+    event.preventDefault();
+}, {passive: false});
+
+// --- Pinch to zoom support ---
+let lastPinchDist = null;
+canvas.addEventListener('touchmove', (event) => {
+    if (event.touches.length === 2) {
+        const dx = event.touches[0].clientX - event.touches[1].clientX;
+        const dy = event.touches[0].clientY - event.touches[1].clientY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (lastPinchDist !== null) {
+            let delta = dist - lastPinchDist;
+            let zoom = scale + delta * 0.005;
+            zoom = Math.max(0.1, Math.min(zoom, 10));
+            // Zoom to center between two fingers
+            const rect = canvas.getBoundingClientRect();
+            const centerX = ((event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left - offsetX) / scale;
+            const centerY = ((event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top - offsetY) / scale;
+            offsetX = ((event.touches[0].clientX + event.touches[1].clientX) / 2 - rect.left) - centerX * zoom;
+            offsetY = ((event.touches[0].clientY + event.touches[1].clientY) / 2 - rect.top) - centerY * zoom;
+            scale = zoom;
+            drawGrid();
+        }
+        lastPinchDist = dist;
+        event.preventDefault();
+    } else {
+        lastPinchDist = null;
+    }
+}, {passive: false});
+
+canvas.addEventListener('touchend', () => {
+    lastPinchDist = null;
+}, {passive: false});
