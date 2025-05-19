@@ -334,8 +334,10 @@ centerGrid();
 drawGrid(); // Draw the empty grid
 update();
 
-// --- Touch support for drawing ---
+// --- Touch support for drawing, panning, and pinch zoom ---
 let lastTouchDraw = null;
+let lastPinchDist = null;
+let lastPinchCenter = null;
 
 canvas.addEventListener('touchstart', (event) => {
     if (event.touches.length === 1) {
@@ -353,10 +355,17 @@ canvas.addEventListener('touchstart', (event) => {
         }
         isDrawing = true;
     } else if (event.touches.length === 2) {
-        // Start panning
+        // Start panning and pinch zoom
         isDragging = true;
-        dragStartX = event.touches[0].clientX - offsetX;
-        dragStartY = event.touches[0].clientY - offsetY;
+        const t1 = event.touches[0];
+        const t2 = event.touches[1];
+        dragStartX = (t1.clientX + t2.clientX) / 2 - offsetX;
+        dragStartY = (t1.clientY + t2.clientY) / 2 - offsetY;
+        lastPinchDist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+        lastPinchCenter = {
+            x: (t1.clientX + t2.clientX) / 2 - canvas.getBoundingClientRect().left,
+            y: (t1.clientY + t2.clientY) / 2 - canvas.getBoundingClientRect().top
+        };
     }
     event.preventDefault();
 }, {passive: false});
@@ -370,46 +379,22 @@ canvas.addEventListener('touchmove', (event) => {
         const x = Math.floor(mouseX / resolution);
         const y = Math.floor(mouseY / resolution);
         if (x >= 0 && x < cols && y >= 0 && y < rows) {
-            // Avoid redundant drawing on the same cell
             if (!lastTouchDraw || lastTouchDraw.x !== x || lastTouchDraw.y !== y) {
                 grid[x][y] = drawState;
                 drawGrid();
                 lastTouchDraw = {x, y};
             }
         }
-    } else if (event.touches.length === 2 && isDragging) {
-        // Panning with two fingers
-        offsetX = event.touches[0].clientX - dragStartX;
-        offsetY = event.touches[0].clientY - dragStartY;
-        drawGrid();
-    }
-    event.preventDefault();
-}, {passive: false});
-
-canvas.addEventListener('touchend', (event) => {
-    isDrawing = false;
-    isDragging = false;
-    lastTouchDraw = null;
-    event.preventDefault();
-}, {passive: false});
-
-// --- Pinch to zoom support ---
-let lastPinchDist = null;
-let lastPinchCenter = null;
-
-canvas.addEventListener('touchmove', (event) => {
-    if (event.touches.length === 2) {
-        const rect = canvas.getBoundingClientRect();
+    } else if (event.touches.length === 2) {
+        // Pinch zoom and pan
         const t1 = event.touches[0];
         const t2 = event.touches[1];
-        const dx = t1.clientX - t2.clientX;
-        const dy = t1.clientY - t2.clientY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        // Center between two fingers
+        const rect = canvas.getBoundingClientRect();
         const centerX = (t1.clientX + t2.clientX) / 2 - rect.left;
         const centerY = (t1.clientY + t2.clientY) / 2 - rect.top;
+        const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
 
+        // Pinch zoom
         if (lastPinchDist !== null && lastPinchCenter !== null) {
             let delta = dist - lastPinchDist;
             let newScale = scale + delta * 0.005;
@@ -425,27 +410,33 @@ canvas.addEventListener('touchmove', (event) => {
             // Adjust offset so the same grid position stays under the pinch center
             offsetX = centerX - gridX * scale;
             offsetY = centerY - gridY * scale;
-
-            drawGrid();
         }
+
+        // Pan
+        offsetX = centerX - (dragStartX);
+        offsetY = centerY - (dragStartY);
+
         lastPinchDist = dist;
         lastPinchCenter = { x: centerX, y: centerY };
-        event.preventDefault();
-    } else {
+        drawGrid();
+    }
+    event.preventDefault();
+}, {passive: false});
+
+canvas.addEventListener('touchend', (event) => {
+    isDrawing = false;
+    isDragging = false;
+    lastTouchDraw = null;
+    if (event.touches.length < 2) {
         lastPinchDist = null;
         lastPinchCenter = null;
     }
-}, {passive: false});
-
-canvas.addEventListener('touchend', () => {
-    lastPinchDist = null;
-    lastPinchCenter = null;
+    event.preventDefault();
 }, {passive: false});
 
 // Pause/unpause on mobile by tapping outside the canvas
 if ('ontouchstart' in window) {
     document.addEventListener('touchstart', (event) => {
-        // If the touch is NOT on the canvas or menu, toggle pause
         const target = event.target;
         if (target !== canvas && !menuContent.contains(target) && target !== menuToggle) {
             paused = !paused;
